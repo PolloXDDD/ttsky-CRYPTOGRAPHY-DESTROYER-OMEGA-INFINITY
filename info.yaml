@@ -1,56 +1,42 @@
-# Tiny Tapeout project information
 project:
-  title:        ""      # Project title
-  author:       ""      # Your name
-  discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  ""      # One line description of what your project does
-  language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
-  clock_hz:     0       # Clock frequency in Hz (or 0 if not applicable)
+  title:        "OMEGA INFINITY KAORU Universal SAT Engine"
+  author:       "Kaoru Aguilera Katayama"
+  discord:      ""
+  description:  "Universal programmable Circuit-SAT solving stage capable of evaluating arbitrary Boolean DAG instances"
+  language:     "Verilog"
+  clock_hz:     10000000
 
-  # How many tiles your design occupies? A single tile is about 167x108 uM.
-  tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
+  top_module:   "tt_um_omega_infinity_kaoru"
 
-  # Your top module name must start with "tt_um_". Make it unique by including your github username:
-  top_module:  "tt_um_example"
-
-  # List your project's source files here.
-  # Source files must be in ./src and you must list each source file separately, one per line.
-  # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
   source_files:
     - "project.v"
 
-# The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
-# This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
+tiles: "1x1"
+
 pinout:
-  # Inputs
-  ui[0]: ""
-  ui[1]: ""
-  ui[2]: ""
-  ui[3]: ""
-  ui[4]: ""
-  ui[5]: ""
-  ui[6]: ""
-  ui[7]: ""
+  ui[0]: "grid_tap v0 / prog_op[0]"
+  ui[1]: "grid_tap v1 / prog_op[1]"
+  ui[2]: "grid_tap v2 / prog_op[2]"
+  ui[3]: "grid_tap v3 / prog_a[0]"
+  ui[4]: "grid_tap v4 / prog_a[1]"
+  ui[5]: "grid_tap v5 / prog_a[2]"
+  ui[6]: "grid_tap v6 / prog_a[3]"
+  ui[7]: "grid_tap v7 / prog_a[4]"
 
-  # Outputs
-  uo[0]: ""
-  uo[1]: ""
-  uo[2]: ""
-  uo[3]: ""
-  uo[4]: ""
-  uo[5]: ""
-  uo[6]: ""
-  uo[7]: ""
+  uo[0]: "SAT"
+  uo[1]: "UNSAT"
+  uo[2]: "DONE"
+  uo[3]: "node_out[3] / wr_ptr[0]"
+  uo[4]: "node_out[4] / wr_ptr[1]"
+  uo[5]: "node_out[5] / wr_ptr[2]"
+  uo[6]: "node_out[6] / wr_ptr[3]"
+  uo[7]: "node_out[7] / wr_ptr[4]"
 
-  # Bidirectional pins
-  uio[0]: ""
-  uio[1]: ""
-  uio[2]: ""
-  uio[3]: ""
-  uio[4]: ""
-  uio[5]: ""
-  uio[6]: ""
-  uio[7]: ""
-
-# Do not change!
-yaml_version: 6
+  uio[0]: "prog_en (1=prog, 0=eval)"
+  uio[1]: "prog_we (write strobe)"
+  uio[2]: "prog_rst_ptr (reset write address)"
+  uio[3]: "grid_stable (trigger decision)"
+  uio[4]: "prog_b[0] / out_gate[0]"
+  uio[5]: "prog_b[1] / out_gate[1]"
+  uio[6]: "prog_b[2] / out_gate[2]"
+  uio[7]: "prog_b[3] / out_gate[3]"
