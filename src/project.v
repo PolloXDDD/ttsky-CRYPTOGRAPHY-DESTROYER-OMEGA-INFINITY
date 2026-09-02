@@ -84,7 +84,7 @@ module tt_um_omega_infinity_kaoru (
     // Función de selección eficiente con prioritario
     function automatic select_node;
         input [4:0] idx;
-        input wire n8, n9, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, n23;
+        input n8, n9, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, n23;
         begin
             case(idx)
                 5'd0:  select_node = n00;
