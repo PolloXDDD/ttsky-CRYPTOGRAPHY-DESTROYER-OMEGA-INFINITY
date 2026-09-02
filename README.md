@@ -3,7 +3,7 @@
 
 **Author:** Kaoru Aguilera Katayama  
 **Process:** SkyWater 130nm (`sky130_fd_sc_hd`)  
-**Target:** Tiny Tapeout (1x1 tile, $160 \times 100\ \mu\text{m}$)
+**Target:** Tiny Tapeout (1x2 tile, $160 \times 100\ \mu\text{m}$)
 
 ---
 
