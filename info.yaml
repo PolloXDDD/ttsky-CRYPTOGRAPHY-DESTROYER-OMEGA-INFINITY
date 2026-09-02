@@ -1,3 +1,5 @@
+yaml_version: 5
+
 project:
   title:        "OMEGA INFINITY KAORU 3D Metal Grid Processor"
   author:       "Kaoru Aguilera Katayama"
@@ -5,13 +7,11 @@ project:
   description:  "Physical BEOL 3D metal wire grid mesh coupled to a CMOS Circuit-SAT engine"
   language:     "Verilog"
   clock_hz:     10000000
-
   top_module:   "tt_um_omega_infinity_kaoru"
+  tiles:        "1x1"
 
   source_files:
     - "project.v"
-
-tiles: "1x1"
 
 pinout:
   ui[0]: "prog_op[0]"
