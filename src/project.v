@@ -117,98 +117,98 @@ module tt_um_omega_infinity_kaoru (
     endfunction
 
     // GATE 0 (nodo 8)
-    wire a_g0 = (gate_a[0] < 5'd8) ? select_node(gate_a[0], n00, n00, n00, n00, n00, n00, n00, n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0)[...]
-    wire b_g0 = (gate_b[0] < 5'd8) ? select_node(gate_b[0], n00, n00, n00, n00, n00, n00, n00, n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0)[...]
+    wire a_g0 = select_node(gate_a[0], 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g0 = select_node(gate_b[0], 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n08;
     gate_eval u_g0 (.op(gate_op[0]), .a(a_g0), .b(b_g0), .y(n08));
 
     // GATE 1 (nodo 9)
-    wire a_g1 = select_node(gate_a[1], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g1 = select_node(gate_b[1], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g1 = select_node(gate_a[1], n08, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g1 = select_node(gate_b[1], n08, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n09;
     gate_eval u_g1 (.op(gate_op[1]), .a(a_g1), .b(b_g1), .y(n09));
 
     // GATE 2 (nodo 10)
-    wire a_g2 = select_node(gate_a[2], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g2 = select_node(gate_b[2], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g2 = select_node(gate_a[2], n08, n09, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g2 = select_node(gate_b[2], n08, n09, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n10;
     gate_eval u_g2 (.op(gate_op[2]), .a(a_g2), .b(b_g2), .y(n10));
 
     // GATE 3 (nodo 11)
-    wire a_g3 = select_node(gate_a[3], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g3 = select_node(gate_b[3], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g3 = select_node(gate_a[3], n08, n09, n10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g3 = select_node(gate_b[3], n08, n09, n10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n11;
     gate_eval u_g3 (.op(gate_op[3]), .a(a_g3), .b(b_g3), .y(n11));
 
     // GATE 4 (nodo 12)
-    wire a_g4 = select_node(gate_a[4], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g4 = select_node(gate_b[4], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g4 = select_node(gate_a[4], n08, n09, n10, n11, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g4 = select_node(gate_b[4], n08, n09, n10, n11, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n12;
     gate_eval u_g4 (.op(gate_op[4]), .a(a_g4), .b(b_g4), .y(n12));
 
     // GATE 5 (nodo 13)
-    wire a_g5 = select_node(gate_a[5], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g5 = select_node(gate_b[5], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g5 = select_node(gate_a[5], n08, n09, n10, n11, n12, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g5 = select_node(gate_b[5], n08, n09, n10, n11, n12, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n13;
     gate_eval u_g5 (.op(gate_op[5]), .a(a_g5), .b(b_g5), .y(n13));
 
     // GATE 6 (nodo 14)
-    wire a_g6 = select_node(gate_a[6], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g6 = select_node(gate_b[6], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g6 = select_node(gate_a[6], n08, n09, n10, n11, n12, n13, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g6 = select_node(gate_b[6], n08, n09, n10, n11, n12, n13, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n14;
     gate_eval u_g6 (.op(gate_op[6]), .a(a_g6), .b(b_g6), .y(n14));
 
     // GATE 7 (nodo 15)
-    wire a_g7 = select_node(gate_a[7], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g7 = select_node(gate_b[7], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g7 = select_node(gate_a[7], n08, n09, n10, n11, n12, n13, n14, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g7 = select_node(gate_b[7], n08, n09, n10, n11, n12, n13, n14, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n15;
     gate_eval u_g7 (.op(gate_op[7]), .a(a_g7), .b(b_g7), .y(n15));
 
     // GATE 8 (nodo 16)
-    wire a_g8 = select_node(gate_a[8], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g8 = select_node(gate_b[8], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g8 = select_node(gate_a[8], n08, n09, n10, n11, n12, n13, n14, n15, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g8 = select_node(gate_b[8], n08, n09, n10, n11, n12, n13, n14, n15, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n16;
     gate_eval u_g8 (.op(gate_op[8]), .a(a_g8), .b(b_g8), .y(n16));
 
     // GATE 9 (nodo 17)
-    wire a_g9 = select_node(gate_a[9], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g9 = select_node(gate_b[9], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g9 = select_node(gate_a[9], n08, n09, n10, n11, n12, n13, n14, n15, n16, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g9 = select_node(gate_b[9], n08, n09, n10, n11, n12, n13, n14, n15, n16, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n17;
     gate_eval u_g9 (.op(gate_op[9]), .a(a_g9), .b(b_g9), .y(n17));
 
     // GATE 10 (nodo 18)
-    wire a_g10 = select_node(gate_a[10], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g10 = select_node(gate_b[10], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g10 = select_node(gate_a[10], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g10 = select_node(gate_b[10], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n18;
     gate_eval u_g10 (.op(gate_op[10]), .a(a_g10), .b(b_g10), .y(n18));
 
     // GATE 11 (nodo 19)
-    wire a_g11 = select_node(gate_a[11], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g11 = select_node(gate_b[11], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g11 = select_node(gate_a[11], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g11 = select_node(gate_b[11], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n19;
     gate_eval u_g11 (.op(gate_op[11]), .a(a_g11), .b(b_g11), .y(n19));
 
     // GATE 12 (nodo 20)
-    wire a_g12 = select_node(gate_a[12], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, 1'b0, 1'b0, 1'b0, 1'b0);
-    wire b_g12 = select_node(gate_b[12], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire a_g12 = select_node(gate_a[12], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g12 = select_node(gate_b[12], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n20;
     gate_eval u_g12 (.op(gate_op[12]), .a(a_g12), .b(b_g12), .y(n20));
 
     // GATE 13 (nodo 21)
-    wire a_g13 = select_node(gate_a[13], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, 1'b0, 1'b0, 1'b0);
-    wire b_g13 = select_node(gate_b[13], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, 1'b0, 1'b0, 1'b0);
+    wire a_g13 = select_node(gate_a[13], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, 1'b0, 1'b0, 1'b0);
+    wire b_g13 = select_node(gate_b[13], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, 1'b0, 1'b0, 1'b0);
     wire n21;
     gate_eval u_g13 (.op(gate_op[13]), .a(a_g13), .b(b_g13), .y(n21));
 
     // GATE 14 (nodo 22)
-    wire a_g14 = select_node(gate_a[14], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, 1'b0, 1'b0);
-    wire b_g14 = select_node(gate_b[14], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, 1'b0, 1'b0);
+    wire a_g14 = select_node(gate_a[14], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, 1'b0, 1'b0);
+    wire b_g14 = select_node(gate_b[14], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, 1'b0, 1'b0);
     wire n22;
     gate_eval u_g14 (.op(gate_op[14]), .a(a_g14), .b(b_g14), .y(n22));
 
     // GATE 15 (nodo 23)
-    wire a_g15 = select_node(gate_a[15], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, 1'b0);
-    wire b_g15 = select_node(gate_b[15], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, 1'b0);
+    wire a_g15 = select_node(gate_a[15], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, 1'b0);
+    wire b_g15 = select_node(gate_b[15], n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, 1'b0);
     wire n23;
     gate_eval u_g15 (.op(gate_op[15]), .a(a_g15), .b(b_g15), .y(n23));
 
