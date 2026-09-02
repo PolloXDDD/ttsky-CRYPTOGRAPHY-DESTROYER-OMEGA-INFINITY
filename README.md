@@ -71,6 +71,5 @@ SAT
 * **Clock Frequency:** 10 MHz nominal
 * **Synthesis Engine:** OpenLane / LibreLane Flow
 
-```
 
 
