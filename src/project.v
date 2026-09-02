@@ -82,7 +82,7 @@ module tt_um_omega_infinity_kaoru (
     wire n07 = quantized_taps[7];
 
     // Función de selección eficiente con prioritario
-    function automatic wire select_node;
+    function automatic select_node;
         input [4:0] idx;
         input wire n8, n9, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, n23;
         begin
@@ -117,8 +117,8 @@ module tt_um_omega_infinity_kaoru (
     endfunction
 
     // GATE 0 (nodo 8)
-    wire a_g0 = (gate_a[0] < 5'd8) ? select_node(gate_a[0], n00, n00, n00, n00, n00, n00, n00, n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0) : 1'b0;
-    wire b_g0 = (gate_b[0] < 5'd8) ? select_node(gate_b[0], n00, n00, n00, n00, n00, n00, n00, n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0) : 1'b0;
+    wire a_g0 = (gate_a[0] < 5'd8) ? select_node(gate_a[0], n00, n00, n00, n00, n00, n00, n00, n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0)[...]
+    wire b_g0 = (gate_b[0] < 5'd8) ? select_node(gate_b[0], n00, n00, n00, n00, n00, n00, n00, n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0)[...]
     wire n08;
     gate_eval u_g0 (.op(gate_op[0]), .a(a_g0), .b(b_g0), .y(n08));
 
