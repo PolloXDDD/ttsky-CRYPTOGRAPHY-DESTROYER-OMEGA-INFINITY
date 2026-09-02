@@ -8,7 +8,7 @@ project:
   language:     "Verilog"
   clock_hz:     10000000
   top_module:   "tt_um_omega_infinity_kaoru"
-  tiles:        "1x1"
+  tiles:        "1x2"
 
   source_files:
     - "project.v"
