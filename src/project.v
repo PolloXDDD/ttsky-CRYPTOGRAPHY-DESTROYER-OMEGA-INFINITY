@@ -16,7 +16,10 @@ module tt_um_omega_infinity_kaoru (
     input  wire       rst_n
 );
 
-    // Pines bidireccionales en alta impedancia (entradas)
+    // Evitar que Verilator aborte por entradas requeridas por Tiny Tapeout no utilizadas
+    wire _unused = &{ena, uio_in[2], 1'b0};
+
+    // Pines bidireccionales en modo entrada pasiva
     assign uio_out = 8'b00000000;
     assign uio_oe  = 8'b00000000;
 
@@ -31,11 +34,10 @@ module tt_um_omega_infinity_kaoru (
     // =========================================================================
     // Entradas analógicas / Taps físicos cuantizados
     // =========================================================================
-    // Se conectan directamente para síntesis limpia de celdas estándar SkyWater
     wire [7:0] raw_grid_wire_taps = 8'b10101101; 
     wire [7:0] quantized_taps;
 
-    // Inversores detectores: Yosys los mapea directamente a sky130_fd_sc_hd__inv_1
+    // Detección de umbral
     assign quantized_taps = ~raw_grid_wire_taps;
 
     // =========================================================================
@@ -65,6 +67,9 @@ module tt_um_omega_infinity_kaoru (
     reg [31:0] node_val;
     integer k;
     always @(*) begin
+        // Inicialización por defecto para evitar latches
+        node_val = 32'd0;
+
         // Nodos 0 a 7 alimentados por los taps de la malla
         node_val[7:0] = quantized_taps;
 
@@ -81,7 +86,6 @@ module tt_um_omega_infinity_kaoru (
                 default: node_val[8 + k] = 1'b0;
             endcase
         end
-        node_val[31:24] = 8'd0;
     end
 
     // Salidas del resolvedor
