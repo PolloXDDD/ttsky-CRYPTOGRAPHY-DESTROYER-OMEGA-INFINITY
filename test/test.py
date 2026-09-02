@@ -94,7 +94,7 @@ async def test_cnf_solver(dut):
     await ClockCycles(dut.clk, 4)
 
     # Lee el valor completo primero, luego extrae el bit
-    uo_out_value = dut.uo_out.value
+    uo_out_value = int(dut.uo_out.value)
     is_sat = (uo_out_value & 0x1) == 1
     raw_assignments = uo_out_value >> 3
 
