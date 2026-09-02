@@ -93,8 +93,10 @@ async def test_cnf_solver(dut):
     dut.uio_in.value = 0x08  # grid_stable = 1
     await ClockCycles(dut.clk, 4)
 
-    is_sat = (dut.uo_out[0].value == 1)
-    raw_assignments = dut.uo_out.value >> 3
+    # Lee el valor completo primero, luego extrae el bit
+    uo_out_value = dut.uo_out.value
+    is_sat = (uo_out_value & 0x1) == 1
+    raw_assignments = uo_out_value >> 3
 
     with open("solution.txt", "w") as f:
         if is_sat:
