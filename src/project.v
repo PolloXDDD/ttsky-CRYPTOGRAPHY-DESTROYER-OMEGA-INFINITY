@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * OMEGA INFINITY KAORU Processor
- * 3D Volumetric Lattice Engine (N^3 - 1 Variables: Up to 262,143 Nodes)
+ * 3D Volumetric Engine: 256 x 256 x 256 Lattice (16,777,215 Variables)
  */
 
 `default_nettype none
 
 module tt_um_omega_infinity_kaoru (
-    input  wire [7:0] ui_in,    // Dedicated inputs: Byte streams (Addresses / Opcodes / Values)
-    output wire [7:0] uo_out,   // Dedicated outputs: Decisions & Readout
+    input  wire [7:0] ui_in,    // Dedicated inputs: Multi-byte stream / Data
+    output wire [7:0] uo_out,   // Dedicated outputs: Decision flags & Assignment
     input  wire [7:0] uio_in,   // Bidirectional IOs: Control bus
     output wire [7:0] uio_out,  // Bidirectional IOs: Unused
     output wire [7:0] uio_oe,   // Bidirectional IOs: Direction control
@@ -20,15 +20,15 @@ module tt_um_omega_infinity_kaoru (
 );
 
     // =========================================================================
-    // Lattice Dimensions: 64 x 64 x 64 = 262,144 Nodes
-    // Node (0,0,0) = VCC (+) Source
-    // Remaining Nodes = 262,143 Active Boolean Variables (Index 1 to 262,143)
-    // Variable Coordinate Width: 3 axes * 6 bits = 18 bits (ADDR_W = 18)
+    // Lattice Dimensions: 256 x 256 x 256 = 16,777,216 Nodes
+    // Node (0,0,0) = Source (+)
+    // Remaining Nodes = 16,777,215 Active Boolean Variables (Index 1 to 16,777,215)
+    // Variable Coordinate Width: 3 axes * 8 bits = 24 bits (ADDR_W = 24)
     // =========================================================================
-    localparam integer ADDR_W = 18; // 2^18 = 262,144 addresses
-    localparam integer G      = 16; // 16 Programmable gates in evaluation plane
-    localparam integer GW     = 3;  // Opcode width (3 bits)
-    localparam integer CACHE_K= 8;  // 8 Active evaluation taps cached in local registers
+    localparam integer ADDR_W  = 24; // 2^24 = 16,777,216 addresses (3 bytes)
+    localparam integer G       = 16; // 16 Programmable intermediate gates
+    localparam integer GW      = 3;  // Opcode width (3 bits)
+    localparam integer CACHE_K = 8;  // 8 Active evaluation taps cached in local registers
 
     // Formal Opcodes
     localparam [GW-1:0] OP_AND  = 3'd0;
@@ -41,24 +41,24 @@ module tt_um_omega_infinity_kaoru (
     localparam [GW-1:0] OP_BUF  = 3'd7;
 
     // Control Interface (uio_in)
-    wire       prog_en      = uio_in[0]; // 1 = Configuration / Shift mode, 0 = Execution mode
-    wire       stream_addr  = uio_in[1]; // 1 = Shift 18-bit lattice address, 0 = Write gate
+    wire       prog_en      = uio_in[0]; // 1 = Configuration / Stream mode, 0 = Execution mode
+    wire       stream_addr  = uio_in[1]; // 1 = Shift 24-bit lattice address, 0 = Write gate
     wire       we_pulse     = uio_in[2]; // Write strobe
-    wire       grid_stable  = uio_in[3]; // Signals lattice potential relaxation
-    wire [1:0] stream_byte  = uio_in[5:4]; // 2'b00: Addr[7:0], 2'b01: Addr[15:8], 2'b10: Addr[17:16]
-    wire       var_val_in   = uio_in[6]; // Quantized threshold bit (0 or 1) for addressed 3D node
-    wire       load_tap_val = uio_in[7]; // Latches var_val_in into cached tap line
+    wire       grid_stable  = uio_in[3]; // Signals volumetric relaxation settling flag
+    wire [1:0] byte_sel     = uio_in[5:4]; // 2'b00: X (Addr[7:0]), 2'b01: Y (Addr[15:8]), 2'b10: Z (Addr[23:16])
+    wire       var_val_in   = uio_in[6]; // Quantized threshold bit (0 or 1) for addressed node
+    wire       load_tap_val = uio_in[7]; // Latches var_val_in into cached tap register
 
     // Gate configuration inputs
     wire [GW-1:0] prog_op   = ui_in[2:0];
     wire [4:0]    prog_a    = ui_in[7:3]; // Indices 0..7 = Taps, 8..23 = Gate outputs
     wire [4:0]    prog_b    = {2'b00, uio_in[5:4], ui_in[2]};
 
-    // 18-bit 3D Lattice Addressing Engine
+    // 24-bit 3D Lattice Addressing Engine
     reg [ADDR_W-1:0] active_3d_addr;
     reg [CACHE_K-1:0] cached_taps; // Active 3D lattice variables mapped to current SAT instance
 
-    // Gate Memory
+    // Gate Configuration Memory
     reg [GW-1:0] gate_op  [0:G-1];
     reg [4:0]    gate_ina [0:G-1];
     reg [4:0]    gate_inb [0:G-1];
@@ -83,7 +83,7 @@ module tt_um_omega_infinity_kaoru (
     assign uio_out = 8'b00000000;
 
     // -------------------------------------------------------------
-    // Configuration & 3D Lattice Variable Ingestion
+    // Configuration & 24-Bit 3D Variable Ingestion
     // -------------------------------------------------------------
     integer p;
     always @(posedge clk or negedge rst_n) begin
@@ -99,18 +99,18 @@ module tt_um_omega_infinity_kaoru (
             end
         end else if (prog_en) begin
             if (stream_addr) begin
-                // Stream 18-bit coordinate: (x, y, z) into address register
-                case (stream_byte)
-                    2'b00: active_3d_addr[7:0]   <= ui_in;
-                    2'b01: active_3d_addr[15:8]  <= ui_in;
-                    2'b10: active_3d_addr[17:16] <= ui_in[1:0];
+                // Stream 24-bit coordinate: (X, Y, Z) aligned in 3 clean bytes
+                case (byte_sel)
+                    2'b00: active_3d_addr[7:0]   <= ui_in; // X coordinate (0..255)
+                    2'b01: active_3d_addr[15:8]  <= ui_in; // Y coordinate (0..255)
+                    2'b10: active_3d_addr[23:16] <= ui_in; // Z coordinate (0..255)
                     default: ;
                 endcase
             end else if (load_tap_val) begin
-                // Latch quantized node bit from (x, y, z) into tap cache
+                // Latch quantized node bit from (X, Y, Z) into tap cache
                 cached_taps <= {cached_taps[CACHE_K-2:0], var_val_in};
             end else if (we_pulse) begin
-                // Write gate descriptor
+                // Write gate descriptor in topological order
                 if (gate_wr_ptr < G) begin
                     gate_op[gate_wr_ptr]  <= prog_op;
                     gate_ina[gate_wr_ptr] <= prog_a;
