@@ -1,4 +1,4 @@
-
+![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
 # OMEGA INFINITY KAORU - 3D BEOL Metal Grid Circuit-SAT Processor
 
 **Author:** Kaoru Aguilera Katayama  
