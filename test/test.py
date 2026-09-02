@@ -20,33 +20,18 @@ def parse_cnf(filepath):
                 clauses.append(literals)
     return num_vars, clauses
 
-async def stream_lattice_coordinate(dut, x, y, z):
-    # Stream X (byte 0)
-    dut.ui_in.value = x & 0xFF
-    dut.uio_in.value = 0x01 | 0x02 | (0x00 << 4)
-    await ClockCycles(dut.clk, 1)
-
-    # Stream Y (byte 1)
-    dut.ui_in.value = y & 0xFF
-    dut.uio_in.value = 0x01 | 0x02 | (0x01 << 4)
-    await ClockCycles(dut.clk, 1)
-
-    # Stream Z (byte 2)
-    dut.ui_in.value = z & 0xFF
-    dut.uio_in.value = 0x01 | 0x02 | (0x02 << 4)
-    await ClockCycles(dut.clk, 1)
-
-async def load_lattice_tap(dut, quantized_bit):
-    dut.uio_in.value = 0x01 | 0x80 | ((quantized_bit & 0x01) << 6)
-    await ClockCycles(dut.clk, 1)
-
+# Programa compuertas alineado al RTL del chip
 async def write_gate(dut, op, a, b):
+    # ui_in[2:0] = op, ui_in[7:3] = op_a
     dut.ui_in.value = (op & 0x07) | ((a & 0x1F) << 3)
-    dut.uio_in.value = 0x01 | 0x04 | ((b & 0x03) << 4)
+    # uio_in[0] = prog_en (1), uio_in[1] = prog_we (1), uio_in[7:4] = op_b
+    dut.uio_in.value = 0x01 | 0x02 | ((b & 0x0F) << 4)
     await ClockCycles(dut.clk, 1)
+    # Baja el strobe de escritura
     dut.uio_in.value = 0x01
     await ClockCycles(dut.clk, 1)
 
+# Asigna qué nodo define el SAT del circuito
 async def set_output_node(dut, target_node):
     dut.ui_in.value = (target_node & 0x1F) << 3
     dut.uio_in.value = 0x01
@@ -57,6 +42,7 @@ async def test_cnf_solver(dut):
     clock = Clock(dut.clk, 100, units="ns")
     cocotb.start_soon(clock.start())
 
+    # 1. Reset general del procesador
     dut.ena.value = 1
     dut.ui_in.value = 0
     dut.uio_in.value = 0
@@ -65,91 +51,70 @@ async def test_cnf_solver(dut):
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 2)
 
+    # 2. Cargar o crear CNF de prueba
     cnf_path = "input.cnf"
     if not os.path.exists(cnf_path):
         with open(cnf_path, "w") as f:
+            # Formula: (v1 OR NOT v2) AND (v2 OR v3)
             f.write("p cnf 3 2\n1 -2 0\n2 3 0\n")
 
     num_vars, clauses = parse_cnf(cnf_path)
 
-    # Program mode
+    # 3. Habilitar modo programacion
     dut.uio_in.value = 0x01
     await ClockCycles(dut.clk, 1)
 
-    # Map variables to 3D grid coords and stream
-    for var_idx in range(1, min(num_vars, 8) + 1):
-        x = var_idx % 256
-        y = (var_idx // 256) % 256
-        z = (var_idx // 65536) % 256
-        await stream_lattice_coordinate(dut, x, y, z)
-        await load_lattice_tap(dut, quantized_bit=1)
-
-    # Map clauses into evaluation plane
+    # 4. Compilar cláusulas CNF en el DAG de compuertas
+    # Taps 0..7 corresponden a los cables de la malla
     gate_idx = 8
     clause_nodes = []
+
     for clause in clauses:
         lit = clause[0]
         var = abs(lit) - 1
         curr = var
         if lit < 0:
-            await write_gate(dut, op=6, a=curr, b=0)
+            await write_gate(dut, op=6, a=curr, b=0) # NOT
             curr = gate_idx
             gate_idx += 1
         for next_lit in clause[1:]:
             next_var = abs(next_lit) - 1
             op_b = next_var
             if next_lit < 0:
-                await write_gate(dut, op=6, a=op_b, b=0)
+                await write_gate(dut, op=6, a=op_b, b=0) # NOT
                 op_b = gate_idx
                 gate_idx += 1
-            await write_gate(dut, op=1, a=curr, b=op_b)
+            await write_gate(dut, op=1, a=curr, b=op_b)  # OR
             curr = gate_idx
             gate_idx += 1
         clause_nodes.append(curr)
 
-    # Conjoin clauses
+    # Conectar todas las cláusulas mediante compuertas AND
     out_node = clause_nodes[0]
     for c_node in clause_nodes[1:]:
-        await write_gate(dut, op=0, a=out_node, b=c_node)
+        await write_gate(dut, op=0, a=out_node, b=c_node) # AND
         out_node = gate_idx
         gate_idx += 1
 
     await set_output_node(dut, out_node)
 
-    # Search-to-decision extraction
-    dut.uio_in.value = 0x00
+    # 5. Ejecución: Relajar la física de la malla de cables
+    dut.uio_in.value = 0x00  # Salir de modo programación
     await ClockCycles(dut.clk, 2)
 
-    solution = []
-    for i in range(num_vars):
-        dut.uio_in.value = 0x01
-        for bit in solution:
-            await load_lattice_tap(dut, bit)
-        await load_lattice_tap(dut, 1)
-        for _ in range(num_vars - len(solution) - 1):
-            await load_lattice_tap(dut, 0)
+    dut.uio_in.value = 0x08  # Activar grid_stable = 1
+    await ClockCycles(dut.clk, 4)
 
-        dut.uio_in.value = 0x08
-        await ClockCycles(dut.clk, 2)
-
-        if dut.uo_out[0].value == 1:
-            solution.append(1)
-        else:
-            solution.append(0)
-
-    # Verification run
-    dut.uio_in.value = 0x01
-    for bit in solution:
-        await load_lattice_tap(dut, bit)
-    for _ in range(8 - len(solution)):
-        await load_lattice_tap(dut, 0)
-
-    dut.uio_in.value = 0x08
-    await ClockCycles(dut.clk, 2)
+    # 6. Extraer y escribir la solución limpia a solution.txt
+    is_sat = (dut.uo_out[0].value == 1)
+    raw_assignments = dut.uo_out.value >> 3  # Bits uo_out[7:3]
 
     with open("solution.txt", "w") as f:
-        if dut.uo_out[0].value == 1:
-            sat_str = " ".join(f"{i+1}" if val == 1 else f"-{i+1}" for i, val in enumerate(solution))
-            f.write(f"SAT\n{sat_str} 0\n")
+        if is_sat:
+            sol_literals = []
+            for i in range(min(num_vars, 5)):
+                bit = (raw_assignments >> i) & 1
+                sol_literals.append(f"{i+1}" if bit == 1 else f"-{i+1}")
+            f.write("SAT\n" + " ".join(sol_literals) + " 0\n")
         else:
             f.write("UNSAT\n")
