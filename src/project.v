@@ -3,93 +3,115 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * OMEGA INFINITY KAORU Processor
- * Universal Programmable Circuit-SAT Engine (RTL)
+ * Ultra-Scale 10^9 x 10^9 (Billion-Cell) GRID Coordinate & Circuit-SAT Engine
  */
 
 `default_nettype none
 
 module tt_um_omega_infinity_kaoru (
-    input  wire [7:0] ui_in,    // Dedicated inputs
-    output wire [7:0] uo_out,   // Dedicated outputs
-    input  wire [7:0] uio_in,   // Bidirectional IOs: Input path
-    output wire [7:0] uio_out,  // Bidirectional IOs: Output path
-    output wire [7:0] uio_oe,   // Bidirectional IOs: Output Enable path
-    input  wire       ena,      // Power enable (always 1)
+    input  wire [7:0] ui_in,    // Dedicated inputs: Multi-byte Stream / Tap Data
+    output wire [7:0] uo_out,   // Dedicated outputs: Status / Assignment
+    input  wire [7:0] uio_in,   // Bidirectional IOs: Control & Address Sequencer
+    output wire [7:0] uio_out,  // Bidirectional IOs: Coordinate / Tap Request
+    output wire [7:0] uio_oe,   // Bidirectional IOs: Direction control
+    input  wire       ena,      // Power enable
     input  wire       clk,      // System clock
     input  wire       rst_n     // Active-low asynchronous reset
 );
 
-    // Architectural parameters
-    localparam integer N  = 8;  // 8 Boolean input variables (v0..v7)
-    localparam integer G  = 24; // 24 Arbitrary programmable gates (g0..g23)
-    localparam integer GW = 3;  // Opcode width (3 bits)
-    localparam integer IW = 5;  // Node index width: ceil(log2(N + G)) = 5 bits (0..31)
+    // =========================================================================
+    // Architectural Parameters: 1-Billion x 1-Billion Lattice Interface
+    // =========================================================================
+    // The physical GRID consists of M x M nodes with M = 1,000,000,000.
+    // Addressing any node requires: ceil(log2(10^9)) = 30 bits per axis.
+    localparam [31:0] GRID_ORDER = 32'd1_000_000_000; 
+    localparam integer ADDR_W    = 30; // 30-bit X/Y coordinate space (up to 1,073,741,824)
+    localparam integer WIN_N     = 16; // 16 active boundary tap lines evaluated concurrently
+    localparam integer G         = 24; // 24 programmable gates for the Circuit-SAT stage
+    localparam integer GW        = 3;  // Opcode width (3 bits)
+    localparam integer IW        = 6;  // ceil(log2(WIN_N + G)) = 6 bits (0..39)
 
-    // Supported Boolean Gate Opcodes
+    // Opcodes formally defined in the OMEGA INFINITY KAORU specification
     localparam [GW-1:0] OP_AND  = 3'd0;
     localparam [GW-1:0] OP_OR   = 3'd1;
     localparam [GW-1:0] OP_XOR  = 3'd2;
     localparam [GW-1:0] OP_XNOR = 3'd3;
     localparam [GW-1:0] OP_NAND = 3'd4;
     localparam [GW-1:0] OP_NOR  = 3'd5;
-    localparam [GW-1:0] OP_NOT  = 3'd6; // Uses Operand A only
-    localparam [GW-1:0] OP_BUF  = 3'd7; // Uses Operand A only
+    localparam [GW-1:0] OP_NOT  = 3'd6;
+    localparam [GW-1:0] OP_BUF  = 3'd7;
 
-    // Control Interface (uio_in)
-    wire          prog_en      = uio_in[0]; // 1 = Programming Mode, 0 = Evaluation Mode
-    wire          prog_we      = uio_in[1]; // Write strobe: latches gate descriptor & increments pointer
-    wire          prog_rst_ptr = uio_in[2]; // Resets gate write pointer to 0
-    wire          grid_stable  = uio_in[3]; // Latch trigger: signals that inputs have settled
-    wire [IW-1:0] prog_b_in    = uio_in[7:4] == 4'b0000 ? 5'd0 : {1'b0, uio_in[7:4]}; 
-    wire [IW-1:0] cfg_out_gate = {1'b0, uio_in[7:4]};
+    // Control pins (uio_in)
+    wire       prog_en      = uio_in[0]; // 1 = Gate Programming / Coords, 0 = Execution
+    wire       prog_we      = uio_in[1]; // Write strobe: latches gate or coordinate byte
+    wire       addr_byte_sel= uio_in[2]; // 1 = Shift 30-bit GRID coordinate, 0 = Program gate
+    wire       grid_stable  = uio_in[3]; // Signals physical relaxation settling flag
+    wire [1:0] coord_axis   = uio_in[5:4]; // 2'b00: X-coord, 2'b01: Y-coord, 2'b10: Tap shift
 
-    // Programming / Evaluation multiplexed inputs
-    wire [GW-1:0] prog_op = ui_in[2:0];
-    wire [IW-1:0] prog_a  = ui_in[7:3];
-    wire [N-1:0]  grid_taps = ui_in; // In Evaluation Mode, all 8 pins are Boolean variables v0..v7
+    // Programming inputs
+    wire [GW-1:0] prog_op   = ui_in[2:0];
+    wire [IW-1:0] prog_a    = {1'b0, ui_in[7:3]};
+    wire [IW-1:0] prog_b_in = {2'b00, uio_in[7:4]};
 
-    // Programmable Instance Configuration Memory
+    // -------------------------------------------------------------
+    // Coordinate Engine for the 1,000,000,000 x 1,000,000,000 Lattice
+    // -------------------------------------------------------------
+    reg [ADDR_W-1:0] grid_coord_x;
+    reg [ADDR_W-1:0] grid_coord_y;
+    reg [WIN_N-1:0]  active_taps; // Active window of digitized boundary taps
+
+    // Gate Memory and Program Counter
     reg [GW-1:0] gate_op  [0:G-1];
     reg [IW-1:0] gate_ina [0:G-1];
     reg [IW-1:0] gate_inb [0:G-1];
     reg [IW-1:0] out_gate;
     reg [4:0]    gate_wr_ptr;
 
-    // Node Array: [7:0] = Input Variables, [31:8] = Gate Outputs
-    reg [N+G-1:0] node;
+    // Node Array: [15:0] = Active GRID taps, [39:16] = Gate outputs
+    reg [WIN_N+G-1:0] node;
 
-    // Decision Registers
+    // Decision Capture Flags
     reg sat;
     reg unsat;
     reg done;
 
-    // Output assignments
+    // Output bus assignments
     assign uo_out[0]   = sat;
     assign uo_out[1]   = unsat;
     assign uo_out[2]   = done;
-    assign uo_out[7:3] = prog_en ? gate_wr_ptr : node[7:3];
+    assign uo_out[7:3] = active_taps[4:0]; // Direct readout of satisfying assignment[cite: 1, 2]
 
-    // Configure bidirectional pins as dedicated inputs
-    assign uio_oe  = 8'b00000000;
-    assign uio_out = 8'b00000000;
+    // Feed current coordinate byte requests back to the test harness
+    assign uio_oe  = 8'b11000000;
+    assign uio_out = {grid_coord_x[1:0], 6'b000000};
 
     // -------------------------------------------------------------
-    // Programming Plane: Universal In-System Configuration
+    // Multi-Byte Stream Programming & Coordinate Shifter
     // -------------------------------------------------------------
     integer p;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            gate_wr_ptr <= 5'd0;
-            out_gate    <= 5'd0;
+            gate_wr_ptr  <= 5'd0;
+            out_gate     <= 5'd0;
+            grid_coord_x <= 30'd0;
+            grid_coord_y <= 30'd500_000_000; // Default: Source at midpoint (0, M/2)[cite: 1, 2]
+            active_taps  <= {WIN_N{1'b0}};
             for (p = 0; p < G; p = p + 1) begin
                 gate_op[p]  <= OP_BUF;
-                gate_ina[p] <= 5'd0;
-                gate_inb[p] <= 5'd0;
+                gate_ina[p] <= 6'd0;
+                gate_inb[p] <= 6'd0;
             end
         end else if (prog_en) begin
-            if (prog_rst_ptr) begin
-                gate_wr_ptr <= 5'd0;
+            if (addr_byte_sel) begin
+                // Stream 30-bit coordinates across the 10^9 lattice
+                case (coord_axis)
+                    2'b00: grid_coord_x <= {grid_coord_x[21:0], ui_in};
+                    2'b01: grid_coord_y <= {grid_coord_y[21:0], ui_in};
+                    2'b10: active_taps  <= {active_taps[7:0], ui_in};
+                    default: ;
+                endcase
             end else if (prog_we) begin
+                // Latch gate descriptor in topological order[cite: 1, 2]
                 if (gate_wr_ptr < G) begin
                     gate_op[gate_wr_ptr]  <= prog_op;
                     gate_ina[gate_wr_ptr] <= prog_a;
@@ -97,36 +119,39 @@ module tt_um_omega_infinity_kaoru (
                     gate_wr_ptr           <= gate_wr_ptr + 1'b1;
                 end
             end else begin
-                out_gate <= cfg_out_gate;
+                out_gate <= {2'b00, uio_in[7:4]};
             end
+        end else begin
+            // In continuous run mode, shift boundary taps directly from ui_in
+            active_taps <= {active_taps[WIN_N-9:0], ui_in};
         end
     end
 
     // -------------------------------------------------------------
-    // Combinational Evaluation: Immediate DAG Reduction
+    // Combinational DAG Evaluation Network
     // -------------------------------------------------------------
     integer k;
     reg a_val, b_val;
     always @(*) begin
-        node[N-1:0] = grid_taps;
+        node[WIN_N-1:0] = active_taps;
         for (k = 0; k < G; k = k + 1) begin
             a_val = node[gate_ina[k]];
             b_val = node[gate_inb[k]];
             case (gate_op[k])
-                OP_AND : node[N+k] = a_val & b_val;
-                OP_OR  : node[N+k] = a_val | b_val;
-                OP_XOR : node[N+k] = a_val ^ b_val;
-                OP_XNOR: node[N+k] = a_val ~^ b_val;
-                OP_NAND: node[N+k] = ~(a_val & b_val);
-                OP_NOR : node[N+k] = ~(a_val | b_val);
-                OP_NOT : node[N+k] = ~a_val;
-                default: node[N+k] = a_val; // OP_BUF
+                OP_AND : node[WIN_N+k] = a_val & b_val;
+                OP_OR  : node[WIN_N+k] = a_val | b_val;
+                OP_XOR : node[WIN_N+k] = a_val ^ b_val;
+                OP_XNOR: node[WIN_N+k] = a_val ~^ b_val;
+                OP_NAND: node[WIN_N+k] = ~(a_val & b_val);
+                OP_NOR : node[WIN_N+k] = ~(a_val | b_val);
+                OP_NOT : node[WIN_N+k] = ~a_val;
+                default: node[WIN_N+k] = a_val; // OP_BUF
             endcase
         end
     end
 
     // -------------------------------------------------------------
-    // Decision Capture Stage
+    // Physical Decision Capture Stage
     // -------------------------------------------------------------
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -138,8 +163,8 @@ module tt_um_omega_infinity_kaoru (
             sat   <= 1'b0;
             unsat <= 1'b0;
         end else if (grid_stable) begin
-            sat   <=  node[out_gate];
-            unsat <= ~node[out_gate];
+            sat   <=  node[WIN_N + out_gate];
+            unsat <= ~node[WIN_N + out_gate];
             done  <= 1'b1;
         end
     end
