@@ -1,114 +1,104 @@
-/*
- * Copyright (c) 2026 Kaoru Aguilera Katayama
- * SPDX-License-Identifier: Apache-2.0
- */
+import os
+import cocotb
+from cocotb.clock import Clock
+from cocotb.triggers import ClockCycles
 
-`default_nettype none
+def parse_cnf(filepath):
+    clauses = []
+    num_vars = 0
+    with open(filepath, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("c"):
+                continue
+            if line.startswith("p"):
+                parts = line.split()
+                num_vars = int(parts[2])
+                continue
+            literals = [int(x) for x in line.split() if int(x) != 0]
+            if literals:
+                clauses.append(literals)
+    return num_vars, clauses
 
-// 1. Declaración Blackbox de la macro GDS de la malla física
-(* blackbox *)
-module omega_metal_grid_3d (
-    output wire [7:0] taps
-);
-endmodule
+async def write_gate(dut, op, a, b):
+    # ui_in[2:0] = op, ui_in[7:3] = prog_a
+    dut.ui_in.value = (op & 0x07) | ((a & 0x1F) << 3)
+    # uio_in[0] = prog_en, uio_in[1] = prog_we, uio_in[7:4] = prog_b
+    dut.uio_in.value = 0x01 | 0x02 | ((b & 0x0F) << 4)
+    await ClockCycles(dut.clk, 1)
+    dut.uio_in.value = 0x01
+    await ClockCycles(dut.clk, 1)
 
-// 2. Módulo principal de Tiny Tapeout
-module tt_um_omega_infinity_kaoru (
-    input  wire [7:0] ui_in,    // [2:0] prog_op, [7:3] prog_a
-    output wire [7:0] uo_out,   // [0] SAT, [1] UNSAT, [2] DONE, [7:3] tap_out
-    input  wire [7:0] uio_in,   // [0] prog_en, [1] prog_we, [3] grid_stable, [7:4] prog_b
-    output wire [7:0] uio_out,
-    output wire [7:0] uio_oe,
-    input  wire       ena,
-    input  wire       clk,
-    input  wire       rst_n
-);
+async def set_output_node(dut, target_node):
+    dut.ui_in.value = (target_node & 0x1F) << 3
+    dut.uio_in.value = 0x01
+    await ClockCycles(dut.clk, 1)
 
-    // Pines bidireccionales configurados como entradas
-    assign uio_out = 8'b00000000;
-    assign uio_oe  = 8'b00000000;
+@cocotb.test()
+async def test_cnf_solver(dut):
+    clock = Clock(dut.clk, 100, units="ns")
+    cocotb.start_soon(clock.start())
 
-    // Desempaquetar buses de control y programación
-    wire [2:0] prog_op = ui_in[2:0];
-    wire [4:0] prog_a  = ui_in[7:3];
-    wire [3:0] prog_b  = uio_in[7:4];
-    wire       prog_en = uio_in[0];
-    wire       prog_we = uio_in[1];
-    wire       grid_st = uio_in[3];
+    dut.ena.value = 1
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 4)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 2)
 
-    // =========================================================================
-    // Conexión física a la malla metálica (omega_metal_grid_3d.gds)
-    // =========================================================================
-    wire [7:0] raw_grid_wire_taps;
-    wire [7:0] quantized_taps;
+    cnf_path = "input.cnf"
+    if not os.path.exists(cnf_path):
+        with open(cnf_path, "w") as f:
+            f.write("p cnf 3 2\n1 -2 0\n2 3 0\n")
 
-    omega_metal_grid_3d physical_mesh (
-        .taps(raw_grid_wire_taps)
-    );
+    num_vars, clauses = parse_cnf(cnf_path)
 
-    // Detección de umbral analógico
-    genvar t;
-    generate
-        for (t = 0; t < 8; t = t + 1) begin : gen_threshold
-            sky130_fd_sc_hd__inv_1 tap_inv (
-                .A(raw_grid_wire_taps[t]),
-                .Y(quantized_taps[t])
-            );
-        end
-    endgenerate
+    dut.uio_in.value = 0x01
+    await ClockCycles(dut.clk, 1)
 
-    // =========================================================================
-    // Matriz de compuertas programables (DAG Booleano)
-    // =========================================================================
-    reg [2:0] gate_op [0:15];
-    reg [4:0] gate_a  [0:15];
-    reg [4:0] gate_b  [0:15];
-    reg [4:0] target_node;
-    reg [3:0] wr_ptr;
+    gate_idx = 8
+    clause_nodes = []
+    for clause in clauses:
+        lit = clause[0]
+        var = abs(lit) - 1
+        curr = var
+        if lit < 0:
+            await write_gate(dut, op=6, a=curr, b=0)
+            curr = gate_idx
+            gate_idx += 1
+        for next_lit in clause[1:]:
+            next_var = abs(next_lit) - 1
+            op_b = next_var
+            if next_lit < 0:
+                await write_gate(dut, op=6, a=op_b, b=0)
+                op_b = gate_idx
+                gate_idx += 1
+            await write_gate(dut, op=1, a=curr, b=op_b)
+            curr = gate_idx
+            gate_idx += 1
+        clause_nodes.append(curr)
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            wr_ptr      <= 4'd0;
-            target_node <= 5'd0;
-        end else if (prog_en && prog_we) begin
-            gate_op[wr_ptr] <= prog_op;
-            gate_a[wr_ptr]  <= prog_a;
-            gate_b[wr_ptr]  <= {1'b0, prog_b};
-            wr_ptr          <= wr_ptr + 1'b1;
-        end else if (prog_en && !prog_we) begin
-            target_node     <= prog_a;
-        end
-    end
+    out_node = clause_nodes[0]
+    for c_node in clause_nodes[1:]:
+        await write_gate(dut, op=0, a=out_node, b=c_node)
+        out_node = gate_idx
+        gate_idx += 1
 
-    // Evaluación combinacional de nodos
-    reg [31:0] node_val;
-    integer k;
-    always @(*) begin
-        // Nodos 0 a 7 provienen directamente de los cables del GRID
-        node_val[7:0] = quantized_taps;
+    await set_output_node(dut, out_node)
 
-        // Nodos 8 a 23 calculados por el DAG programado
-        for (k = 0; k < 16; k = k + 1) begin
-            case (gate_op[k])
-                3'b000:  node_val[8 + k] = node_val[gate_a[k]] & node_val[gate_b[k]]; // AND
-                3'b001:  node_val[8 + k] = node_val[gate_a[k]] | node_val[gate_b[k]]; // OR
-                3'b010:  node_val[8 + k] = ~(node_val[gate_a[k]] & node_val[gate_b[k]]); // NAND
-                3'b011:  node_val[8 + k] = ~(node_val[gate_a[k]] | node_val[gate_b[k]]); // NOR
-                3'b100:  node_val[8 + k] = node_val[gate_a[k]] ^ node_val[gate_b[k]]; // XOR
-                3'b101:  node_val[8 + k] = ~(node_val[gate_a[k]] ^ node_val[gate_b[k]]); // XNOR
-                3'b110:  node_val[8 + k] = ~node_val[gate_a[k]];                     // NOT
-                default: node_val[8 + k] = 1'b0;
-            endcase
-        end
-        node_val[31:24] = 8'd0;
-    end
+    dut.uio_in.value = 0x00
+    await ClockCycles(dut.clk, 2)
 
-    // Señal booleana de salida
-    wire sat_eval = node_val[target_node];
+    dut.uio_in.value = 0x08  # grid_stable = 1
+    await ClockCycles(dut.clk, 4)
 
-    assign uo_out[0]   = sat_eval & grid_st;
-    assign uo_out[1]   = (~sat_eval) & grid_st;
-    assign uo_out[2]   = grid_st;
-    assign uo_out[7:3] = quantized_taps[4:0];
+    is_sat = (dut.uo_out[0].value == 1)
+    raw_assignments = dut.uo_out.value >> 3
 
-endmodule
+    with open("solution.txt", "w") as f:
+        if is_sat:
+            sol = [f"{i+1}" if ((raw_assignments >> i) & 1) else f"-{i+1}" for i in range(min(num_vars, 5))]
+            f.write("SAT\n" + " ".join(sol) + " 0\n")
+        else:
+            f.write("UNSAT\n")
