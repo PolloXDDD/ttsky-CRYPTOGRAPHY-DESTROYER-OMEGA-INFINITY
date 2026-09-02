@@ -68,10 +68,7 @@ module tt_um_omega_infinity_kaoru (
     end
 
     // -------------------------------------------------------------------------
-    // DAG combinacional: cada nodo es un wire escalar separado.
-    // La entrada de cada gate se selecciona con macros de mux que solo
-    // referencian nodos ANTERIORES por nombre, así Verilator ve el DAG
-    // estáticamente y no reporta UNOPTFLAT.
+    // DAG combinacional: optimizado con muxes eficientes
     // -------------------------------------------------------------------------
 
     // Nodos base (0..7): salidas de la malla física
@@ -84,323 +81,134 @@ module tt_um_omega_infinity_kaoru (
     wire n06 = quantized_taps[6];
     wire n07 = quantized_taps[7];
 
-    // Función combinacional de un gate: entrada A/B seleccionada con mux
-    // acotado a los nodos disponibles hasta esa etapa.
+    // Función de selección eficiente con prioritario
+    function automatic wire select_node;
+        input [4:0] idx;
+        input wire n8, n9, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, n23;
+        begin
+            case(idx)
+                5'd0:  select_node = n00;
+                5'd1:  select_node = n01;
+                5'd2:  select_node = n02;
+                5'd3:  select_node = n03;
+                5'd4:  select_node = n04;
+                5'd5:  select_node = n05;
+                5'd6:  select_node = n06;
+                5'd7:  select_node = n07;
+                5'd8:  select_node = n8;
+                5'd9:  select_node = n9;
+                5'd10: select_node = n10;
+                5'd11: select_node = n11;
+                5'd12: select_node = n12;
+                5'd13: select_node = n13;
+                5'd14: select_node = n14;
+                5'd15: select_node = n15;
+                5'd16: select_node = n16;
+                5'd17: select_node = n17;
+                5'd18: select_node = n18;
+                5'd19: select_node = n19;
+                5'd20: select_node = n20;
+                5'd21: select_node = n21;
+                5'd22: select_node = n22;
+                5'd23: select_node = n23;
+                default: select_node = 1'b0;
+            endcase
+        end
+    endfunction
 
-    // ---------- Macros de selección (mux 24:1 acotados) ----------
-    `define SEL8(sel, idx) \
-        ( ((idx) == 5'd0) ? n00 : \
-          ((idx) == 5'd1) ? n01 : \
-          ((idx) == 5'd2) ? n02 : \
-          ((idx) == 5'd3) ? n03 : \
-          ((idx) == 5'd4) ? n04 : \
-          ((idx) == 5'd5) ? n05 : \
-          ((idx) == 5'd6) ? n06 : \
-          ((idx) == 5'd7) ? n07 : 1'b0 )
-
-    // ---------- GATE 0 (nodo 8): solo puede leer 0..7 ----------
-    wire a_g0 = `SEL8(x, gate_a[0]);
-    wire b_g0 = `SEL8(x, gate_b[0]);
+    // GATE 0 (nodo 8)
+    wire a_g0 = (gate_a[0] < 5'd8) ? select_node(gate_a[0], n00, n00, n00, n00, n00, n00, n00, n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0) : 1'b0;
+    wire b_g0 = (gate_b[0] < 5'd8) ? select_node(gate_b[0], n00, n00, n00, n00, n00, n00, n00, n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0) : 1'b0;
     wire n08;
     gate_eval u_g0 (.op(gate_op[0]), .a(a_g0), .b(b_g0), .y(n08));
 
-    // ---------- GATE 1 (nodo 9): puede leer 0..8 ----------
-    wire a_g1 = (gate_a[1] == 5'd8) ? n08 : `SEL8(x, gate_a[1]);
-    wire b_g1 = (gate_b[1] == 5'd8) ? n08 : `SEL8(x, gate_b[1]);
+    // GATE 1 (nodo 9)
+    wire a_g1 = select_node(gate_a[1], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g1 = select_node(gate_b[1], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n09;
     gate_eval u_g1 (.op(gate_op[1]), .a(a_g1), .b(b_g1), .y(n09));
 
-    // ---------- GATE 2 (nodo 10): puede leer 0..9 ----------
-    wire a_g2 = (gate_a[2] == 5'd9) ? n09 :
-                (gate_a[2] == 5'd8) ? n08 : `SEL8(x, gate_a[2]);
-    wire b_g2 = (gate_b[2] == 5'd9) ? n09 :
-                (gate_b[2] == 5'd8) ? n08 : `SEL8(x, gate_b[2]);
+    // GATE 2 (nodo 10)
+    wire a_g2 = select_node(gate_a[2], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g2 = select_node(gate_b[2], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n10;
     gate_eval u_g2 (.op(gate_op[2]), .a(a_g2), .b(b_g2), .y(n10));
 
-    // ---------- GATE 3 (nodo 11) ----------
-    wire a_g3 = (gate_a[3] == 5'd10) ? n10 :
-                (gate_a[3] == 5'd9)  ? n09 :
-                (gate_a[3] == 5'd8)  ? n08 : `SEL8(x, gate_a[3]);
-    wire b_g3 = (gate_b[3] == 5'd10) ? n10 :
-                (gate_b[3] == 5'd9)  ? n09 :
-                (gate_b[3] == 5'd8)  ? n08 : `SEL8(x, gate_b[3]);
+    // GATE 3 (nodo 11)
+    wire a_g3 = select_node(gate_a[3], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g3 = select_node(gate_b[3], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n11;
     gate_eval u_g3 (.op(gate_op[3]), .a(a_g3), .b(b_g3), .y(n11));
 
-    // ---------- GATE 4 (nodo 12) ----------
-    wire a_g4 = (gate_a[4] == 5'd11) ? n11 :
-                (gate_a[4] == 5'd10) ? n10 :
-                (gate_a[4] == 5'd9)  ? n09 :
-                (gate_a[4] == 5'd8)  ? n08 : `SEL8(x, gate_a[4]);
-    wire b_g4 = (gate_b[4] == 5'd11) ? n11 :
-                (gate_b[4] == 5'd10) ? n10 :
-                (gate_b[4] == 5'd9)  ? n09 :
-                (gate_b[4] == 5'd8)  ? n08 : `SEL8(x, gate_b[4]);
+    // GATE 4 (nodo 12)
+    wire a_g4 = select_node(gate_a[4], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g4 = select_node(gate_b[4], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n12;
     gate_eval u_g4 (.op(gate_op[4]), .a(a_g4), .b(b_g4), .y(n12));
 
-    // ---------- GATE 5 (nodo 13) ----------
-    wire a_g5 = (gate_a[5] == 5'd12) ? n12 :
-                (gate_a[5] == 5'd11) ? n11 :
-                (gate_a[5] == 5'd10) ? n10 :
-                (gate_a[5] == 5'd9)  ? n09 :
-                (gate_a[5] == 5'd8)  ? n08 : `SEL8(x, gate_a[5]);
-    wire b_g5 = (gate_b[5] == 5'd12) ? n12 :
-                (gate_b[5] == 5'd11) ? n11 :
-                (gate_b[5] == 5'd10) ? n10 :
-                (gate_b[5] == 5'd9)  ? n09 :
-                (gate_b[5] == 5'd8)  ? n08 : `SEL8(x, gate_b[5]);
+    // GATE 5 (nodo 13)
+    wire a_g5 = select_node(gate_a[5], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g5 = select_node(gate_b[5], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n13;
     gate_eval u_g5 (.op(gate_op[5]), .a(a_g5), .b(b_g5), .y(n13));
 
-    // ---------- GATE 6 (nodo 14) ----------
-    wire a_g6 = (gate_a[6] == 5'd13) ? n13 :
-                (gate_a[6] == 5'd12) ? n12 :
-                (gate_a[6] == 5'd11) ? n11 :
-                (gate_a[6] == 5'd10) ? n10 :
-                (gate_a[6] == 5'd9)  ? n09 :
-                (gate_a[6] == 5'd8)  ? n08 : `SEL8(x, gate_a[6]);
-    wire b_g6 = (gate_b[6] == 5'd13) ? n13 :
-                (gate_b[6] == 5'd12) ? n12 :
-                (gate_b[6] == 5'd11) ? n11 :
-                (gate_b[6] == 5'd10) ? n10 :
-                (gate_b[6] == 5'd9)  ? n09 :
-                (gate_b[6] == 5'd8)  ? n08 : `SEL8(x, gate_b[6]);
+    // GATE 6 (nodo 14)
+    wire a_g6 = select_node(gate_a[6], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g6 = select_node(gate_b[6], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n14;
     gate_eval u_g6 (.op(gate_op[6]), .a(a_g6), .b(b_g6), .y(n14));
 
-    // ---------- GATE 7 (nodo 15) ----------
-    wire a_g7 = (gate_a[7] == 5'd14) ? n14 :
-                (gate_a[7] == 5'd13) ? n13 :
-                (gate_a[7] == 5'd12) ? n12 :
-                (gate_a[7] == 5'd11) ? n11 :
-                (gate_a[7] == 5'd10) ? n10 :
-                (gate_a[7] == 5'd9)  ? n09 :
-                (gate_a[7] == 5'd8)  ? n08 : `SEL8(x, gate_a[7]);
-    wire b_g7 = (gate_b[7] == 5'd14) ? n14 :
-                (gate_b[7] == 5'd13) ? n13 :
-                (gate_b[7] == 5'd12) ? n12 :
-                (gate_b[7] == 5'd11) ? n11 :
-                (gate_b[7] == 5'd10) ? n10 :
-                (gate_b[7] == 5'd9)  ? n09 :
-                (gate_b[7] == 5'd8)  ? n08 : `SEL8(x, gate_b[7]);
+    // GATE 7 (nodo 15)
+    wire a_g7 = select_node(gate_a[7], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g7 = select_node(gate_b[7], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n15;
     gate_eval u_g7 (.op(gate_op[7]), .a(a_g7), .b(b_g7), .y(n15));
 
-    // ---------- GATE 8 (nodo 16) ----------
-    wire a_g8 = (gate_a[8] == 5'd15) ? n15 :
-                (gate_a[8] == 5'd14) ? n14 :
-                (gate_a[8] == 5'd13) ? n13 :
-                (gate_a[8] == 5'd12) ? n12 :
-                (gate_a[8] == 5'd11) ? n11 :
-                (gate_a[8] == 5'd10) ? n10 :
-                (gate_a[8] == 5'd9)  ? n09 :
-                (gate_a[8] == 5'd8)  ? n08 : `SEL8(x, gate_a[8]);
-    wire b_g8 = (gate_b[8] == 5'd15) ? n15 :
-                (gate_b[8] == 5'd14) ? n14 :
-                (gate_b[8] == 5'd13) ? n13 :
-                (gate_b[8] == 5'd12) ? n12 :
-                (gate_b[8] == 5'd11) ? n11 :
-                (gate_b[8] == 5'd10) ? n10 :
-                (gate_b[8] == 5'd9)  ? n09 :
-                (gate_b[8] == 5'd8)  ? n08 : `SEL8(x, gate_b[8]);
+    // GATE 8 (nodo 16)
+    wire a_g8 = select_node(gate_a[8], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g8 = select_node(gate_b[8], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n16;
     gate_eval u_g8 (.op(gate_op[8]), .a(a_g8), .b(b_g8), .y(n16));
 
-    // ---------- GATE 9 (nodo 17) ----------
-    wire a_g9 = (gate_a[9] == 5'd16) ? n16 :
-                (gate_a[9] == 5'd15) ? n15 :
-                (gate_a[9] == 5'd14) ? n14 :
-                (gate_a[9] == 5'd13) ? n13 :
-                (gate_a[9] == 5'd12) ? n12 :
-                (gate_a[9] == 5'd11) ? n11 :
-                (gate_a[9] == 5'd10) ? n10 :
-                (gate_a[9] == 5'd9)  ? n09 :
-                (gate_a[9] == 5'd8)  ? n08 : `SEL8(x, gate_a[9]);
-    wire b_g9 = (gate_b[9] == 5'd16) ? n16 :
-                (gate_b[9] == 5'd15) ? n15 :
-                (gate_b[9] == 5'd14) ? n14 :
-                (gate_b[9] == 5'd13) ? n13 :
-                (gate_b[9] == 5'd12) ? n12 :
-                (gate_b[9] == 5'd11) ? n11 :
-                (gate_b[9] == 5'd10) ? n10 :
-                (gate_b[9] == 5'd9)  ? n09 :
-                (gate_b[9] == 5'd8)  ? n08 : `SEL8(x, gate_b[9]);
+    // GATE 9 (nodo 17)
+    wire a_g9 = select_node(gate_a[9], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g9 = select_node(gate_b[9], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n17;
     gate_eval u_g9 (.op(gate_op[9]), .a(a_g9), .b(b_g9), .y(n17));
 
-    // ---------- GATE 10 (nodo 18) ----------
-    wire a_g10 = (gate_a[10] == 5'd17) ? n17 :
-                 (gate_a[10] == 5'd16) ? n16 :
-                 (gate_a[10] == 5'd15) ? n15 :
-                 (gate_a[10] == 5'd14) ? n14 :
-                 (gate_a[10] == 5'd13) ? n13 :
-                 (gate_a[10] == 5'd12) ? n12 :
-                 (gate_a[10] == 5'd11) ? n11 :
-                 (gate_a[10] == 5'd10) ? n10 :
-                 (gate_a[10] == 5'd9)  ? n09 :
-                 (gate_a[10] == 5'd8)  ? n08 : `SEL8(x, gate_a[10]);
-    wire b_g10 = (gate_b[10] == 5'd17) ? n17 :
-                 (gate_b[10] == 5'd16) ? n16 :
-                 (gate_b[10] == 5'd15) ? n15 :
-                 (gate_b[10] == 5'd14) ? n14 :
-                 (gate_b[10] == 5'd13) ? n13 :
-                 (gate_b[10] == 5'd12) ? n12 :
-                 (gate_b[10] == 5'd11) ? n11 :
-                 (gate_b[10] == 5'd10) ? n10 :
-                 (gate_b[10] == 5'd9)  ? n09 :
-                 (gate_b[10] == 5'd8)  ? n08 : `SEL8(x, gate_b[10]);
+    // GATE 10 (nodo 18)
+    wire a_g10 = select_node(gate_a[10], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g10 = select_node(gate_b[10], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n18;
     gate_eval u_g10 (.op(gate_op[10]), .a(a_g10), .b(b_g10), .y(n18));
 
-    // ---------- GATE 11 (nodo 19) ----------
-    wire a_g11 = (gate_a[11] == 5'd18) ? n18 :
-                 (gate_a[11] == 5'd17) ? n17 :
-                 (gate_a[11] == 5'd16) ? n16 :
-                 (gate_a[11] == 5'd15) ? n15 :
-                 (gate_a[11] == 5'd14) ? n14 :
-                 (gate_a[11] == 5'd13) ? n13 :
-                 (gate_a[11] == 5'd12) ? n12 :
-                 (gate_a[11] == 5'd11) ? n11 :
-                 (gate_a[11] == 5'd10) ? n10 :
-                 (gate_a[11] == 5'd9)  ? n09 :
-                 (gate_a[11] == 5'd8)  ? n08 : `SEL8(x, gate_a[11]);
-    wire b_g11 = (gate_b[11] == 5'd18) ? n18 :
-                 (gate_b[11] == 5'd17) ? n17 :
-                 (gate_b[11] == 5'd16) ? n16 :
-                 (gate_b[11] == 5'd15) ? n15 :
-                 (gate_b[11] == 5'd14) ? n14 :
-                 (gate_b[11] == 5'd13) ? n13 :
-                 (gate_b[11] == 5'd12) ? n12 :
-                 (gate_b[11] == 5'd11) ? n11 :
-                 (gate_b[11] == 5'd10) ? n10 :
-                 (gate_b[11] == 5'd9)  ? n09 :
-                 (gate_b[11] == 5'd8)  ? n08 : `SEL8(x, gate_b[11]);
+    // GATE 11 (nodo 19)
+    wire a_g11 = select_node(gate_a[11], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g11 = select_node(gate_b[11], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n19;
     gate_eval u_g11 (.op(gate_op[11]), .a(a_g11), .b(b_g11), .y(n19));
 
-    // ---------- GATE 12 (nodo 20) ----------
-    wire a_g12 = (gate_a[12] == 5'd19) ? n19 :
-                 (gate_a[12] == 5'd18) ? n18 :
-                 (gate_a[12] == 5'd17) ? n17 :
-                 (gate_a[12] == 5'd16) ? n16 :
-                 (gate_a[12] == 5'd15) ? n15 :
-                 (gate_a[12] == 5'd14) ? n14 :
-                 (gate_a[12] == 5'd13) ? n13 :
-                 (gate_a[12] == 5'd12) ? n12 :
-                 (gate_a[12] == 5'd11) ? n11 :
-                 (gate_a[12] == 5'd10) ? n10 :
-                 (gate_a[12] == 5'd9)  ? n09 :
-                 (gate_a[12] == 5'd8)  ? n08 : `SEL8(x, gate_a[12]);
-    wire b_g12 = (gate_b[12] == 5'd19) ? n19 :
-                 (gate_b[12] == 5'd18) ? n18 :
-                 (gate_b[12] == 5'd17) ? n17 :
-                 (gate_b[12] == 5'd16) ? n16 :
-                 (gate_b[12] == 5'd15) ? n15 :
-                 (gate_b[12] == 5'd14) ? n14 :
-                 (gate_b[12] == 5'd13) ? n13 :
-                 (gate_b[12] == 5'd12) ? n12 :
-                 (gate_b[12] == 5'd11) ? n11 :
-                 (gate_b[12] == 5'd10) ? n10 :
-                 (gate_b[12] == 5'd9)  ? n09 :
-                 (gate_b[12] == 5'd8)  ? n08 : `SEL8(x, gate_b[12]);
+    // GATE 12 (nodo 20)
+    wire a_g12 = select_node(gate_a[12], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, 1'b0, 1'b0, 1'b0, 1'b0);
+    wire b_g12 = select_node(gate_b[12], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, 1'b0, 1'b0, 1'b0, 1'b0);
     wire n20;
     gate_eval u_g12 (.op(gate_op[12]), .a(a_g12), .b(b_g12), .y(n20));
 
-    // ---------- GATE 13 (nodo 21) ----------
-    wire a_g13 = (gate_a[13] == 5'd20) ? n20 :
-                 (gate_a[13] == 5'd19) ? n19 :
-                 (gate_a[13] == 5'd18) ? n18 :
-                 (gate_a[13] == 5'd17) ? n17 :
-                 (gate_a[13] == 5'd16) ? n16 :
-                 (gate_a[13] == 5'd15) ? n15 :
-                 (gate_a[13] == 5'd14) ? n14 :
-                 (gate_a[13] == 5'd13) ? n13 :
-                 (gate_a[13] == 5'd12) ? n12 :
-                 (gate_a[13] == 5'd11) ? n11 :
-                 (gate_a[13] == 5'd10) ? n10 :
-                 (gate_a[13] == 5'd9)  ? n09 :
-                 (gate_a[13] == 5'd8)  ? n08 : `SEL8(x, gate_a[13]);
-    wire b_g13 = (gate_b[13] == 5'd20) ? n20 :
-                 (gate_b[13] == 5'd19) ? n19 :
-                 (gate_b[13] == 5'd18) ? n18 :
-                 (gate_b[13] == 5'd17) ? n17 :
-                 (gate_b[13] == 5'd16) ? n16 :
-                 (gate_b[13] == 5'd15) ? n15 :
-                 (gate_b[13] == 5'd14) ? n14 :
-                 (gate_b[13] == 5'd13) ? n13 :
-                 (gate_b[13] == 5'd12) ? n12 :
-                 (gate_b[13] == 5'd11) ? n11 :
-                 (gate_b[13] == 5'd10) ? n10 :
-                 (gate_b[13] == 5'd9)  ? n09 :
-                 (gate_b[13] == 5'd8)  ? n08 : `SEL8(x, gate_b[13]);
+    // GATE 13 (nodo 21)
+    wire a_g13 = select_node(gate_a[13], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, 1'b0, 1'b0, 1'b0);
+    wire b_g13 = select_node(gate_b[13], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, 1'b0, 1'b0, 1'b0);
     wire n21;
     gate_eval u_g13 (.op(gate_op[13]), .a(a_g13), .b(b_g13), .y(n21));
 
-    // ---------- GATE 14 (nodo 22) ----------
-    wire a_g14 = (gate_a[14] == 5'd21) ? n21 :
-                 (gate_a[14] == 5'd20) ? n20 :
-                 (gate_a[14] == 5'd19) ? n19 :
-                 (gate_a[14] == 5'd18) ? n18 :
-                 (gate_a[14] == 5'd17) ? n17 :
-                 (gate_a[14] == 5'd16) ? n16 :
-                 (gate_a[14] == 5'd15) ? n15 :
-                 (gate_a[14] == 5'd14) ? n14 :
-                 (gate_a[14] == 5'd13) ? n13 :
-                 (gate_a[14] == 5'd12) ? n12 :
-                 (gate_a[14] == 5'd11) ? n11 :
-                 (gate_a[14] == 5'd10) ? n10 :
-                 (gate_a[14] == 5'd9)  ? n09 :
-                 (gate_a[14] == 5'd8)  ? n08 : `SEL8(x, gate_a[14]);
-    wire b_g14 = (gate_b[14] == 5'd21) ? n21 :
-                 (gate_b[14] == 5'd20) ? n20 :
-                 (gate_b[14] == 5'd19) ? n19 :
-                 (gate_b[14] == 5'd18) ? n18 :
-                 (gate_b[14] == 5'd17) ? n17 :
-                 (gate_b[14] == 5'd16) ? n16 :
-                 (gate_b[14] == 5'd15) ? n15 :
-                 (gate_b[14] == 5'd14) ? n14 :
-                 (gate_b[14] == 5'd13) ? n13 :
-                 (gate_b[14] == 5'd12) ? n12 :
-                 (gate_b[14] == 5'd11) ? n11 :
-                 (gate_b[14] == 5'd10) ? n10 :
-                 (gate_b[14] == 5'd9)  ? n09 :
-                 (gate_b[14] == 5'd8)  ? n08 : `SEL8(x, gate_b[14]);
+    // GATE 14 (nodo 22)
+    wire a_g14 = select_node(gate_a[14], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, 1'b0, 1'b0);
+    wire b_g14 = select_node(gate_b[14], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, 1'b0, 1'b0);
     wire n22;
     gate_eval u_g14 (.op(gate_op[14]), .a(a_g14), .b(b_g14), .y(n22));
 
-    // ---------- GATE 15 (nodo 23) ----------
-    wire a_g15 = (gate_a[15] == 5'd22) ? n22 :
-                 (gate_a[15] == 5'd21) ? n21 :
-                 (gate_a[15] == 5'd20) ? n20 :
-                 (gate_a[15] == 5'd19) ? n19 :
-                 (gate_a[15] == 5'd18) ? n18 :
-                 (gate_a[15] == 5'd17) ? n17 :
-                 (gate_a[15] == 5'd16) ? n16 :
-                 (gate_a[15] == 5'd15) ? n15 :
-                 (gate_a[15] == 5'd14) ? n14 :
-                 (gate_a[15] == 5'd13) ? n13 :
-                 (gate_a[15] == 5'd12) ? n12 :
-                 (gate_a[15] == 5'd11) ? n11 :
-                 (gate_a[15] == 5'd10) ? n10 :
-                 (gate_a[15] == 5'd9)  ? n09 :
-                 (gate_a[15] == 5'd8)  ? n08 : `SEL8(x, gate_a[15]);
-    wire b_g15 = (gate_b[15] == 5'd22) ? n22 :
-                 (gate_b[15] == 5'd21) ? n21 :
-                 (gate_b[15] == 5'd20) ? n20 :
-                 (gate_b[15] == 5'd19) ? n19 :
-                 (gate_b[15] == 5'd18) ? n18 :
-                 (gate_b[15] == 5'd17) ? n17 :
-                 (gate_b[15] == 5'd16) ? n16 :
-                 (gate_b[15] == 5'd15) ? n15 :
-                 (gate_b[15] == 5'd14) ? n14 :
-                 (gate_b[15] == 5'd13) ? n13 :
-                 (gate_b[15] == 5'd12) ? n12 :
-                 (gate_b[15] == 5'd11) ? n11 :
-                 (gate_b[15] == 5'd10) ? n10 :
-                 (gate_b[15] == 5'd9)  ? n09 :
-                 (gate_b[15] == 5'd8)  ? n08 : `SEL8(x, gate_b[15]);
+    // GATE 15 (nodo 23)
+    wire a_g15 = select_node(gate_a[15], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, 1'b0);
+    wire b_g15 = select_node(gate_b[15], n00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, n08, n09, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21, n22, 1'b0);
     wire n23;
     gate_eval u_g15 (.op(gate_op[15]), .a(a_g15), .b(b_g15), .y(n23));
 
@@ -435,8 +243,6 @@ module tt_um_omega_infinity_kaoru (
                      uio_in[2],
                      quantized_taps[7:5],
                      1'b0};
-
-    `undef SEL8
 
 endmodule
 
