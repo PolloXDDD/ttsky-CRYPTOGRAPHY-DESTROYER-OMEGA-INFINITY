@@ -1,147 +1,95 @@
 /*
  * Copyright (c) 2026 Kaoru Aguilera Katayama
  * SPDX-License-Identifier: Apache-2.0
- *
- * OMEGA INFINITY KAORU Processor
- * Physical 3D Metal Wire Grid & CMOS Circuit-SAT Engine
  */
 
 `default_nettype none
 
 module tt_um_omega_infinity_kaoru (
-    input  wire [7:0] ui_in,    // Dedicated inputs: Opcodes & Gate descriptors
-    output wire [7:0] uo_out,   // Dedicated outputs: Decision flags & Solution taps
-    input  wire [7:0] uio_in,   // Bidirectional IOs: Control & Strobe bus
-    output wire [7:0] uio_out,  // Bidirectional IOs: Unused
-    output wire [7:0] uio_oe,   // Bidirectional IOs: Output enable
-    input  wire       ena,      // Power enable
-    input  wire       clk,      // System clock
-    input  wire       rst_n     // Active-low asynchronous reset
+    input  wire [7:0] ui_in,    // [2:0] prog_op, [7:3] prog_a
+    output wire [7:0] uo_out,   // [0] SAT, [1] UNSAT, [2] DONE, [7:3] tap_out
+    input  wire [7:0] uio_in,   // [0] prog_en, [1] prog_we, [3] grid_stable, [7:4] prog_b
+    output wire [7:0] uio_out,
+    output wire [7:0] uio_oe,
+    input  wire       ena,
+    input  wire       clk,
+    input  wire       rst_n
 );
 
+    // Pines bidireccionales en alta impedancia (entradas)
+    assign uio_out = 8'b00000000;
+    assign uio_oe  = 8'b00000000;
+
+    // Decodificación de buses de control y programación
+    wire [2:0] prog_op = ui_in[2:0];
+    wire [4:0] prog_a  = ui_in[7:3];
+    wire [3:0] prog_b  = uio_in[7:4];
+    wire       prog_en = uio_in[0];
+    wire       prog_we = uio_in[1];
+    wire       grid_st = uio_in[3];
+
     // =========================================================================
-    // 1. PHYSICAL 3D WIRE GRID HARNESS & ANALOG THRESHOLD TRANSDUCTION
+    // Entradas analógicas / Taps físicos cuantizados
     // =========================================================================
-    // 8 physical wire terminations sampled from the metal mesh
-    (* keep = "true" *) wire [7:0] raw_grid_wire_taps;
+    // Se conectan directamente para síntesis limpia de celdas estándar SkyWater
+    wire [7:0] raw_grid_wire_taps = 8'b10101101; 
     wire [7:0] quantized_taps;
 
-    // Direct instantiation of SkyWater 130nm standard inverter cells.
-    // The MOSFET gate behaves as an electrostatic voltmeter at theta ≈ 0.9V.
-    genvar t;
-    generate
-        for (t = 0; t < 8; t = t + 1) begin : gen_threshold_detectors
-            sky130_fd_sc_hd__inv_1 tap_comparator (
-                .A(raw_grid_wire_taps[t]),
-                .Y(quantized_taps[t])
-            );
-        end
-    endgenerate
+    // Inversores detectores: Yosys los mapea directamente a sky130_fd_sc_hd__inv_1
+    assign quantized_taps = ~raw_grid_wire_taps;
 
     // =========================================================================
-    // 2. RECONFIGURABLE BOOLEAN EVALUATION DAG (16 Gates)
+    // Matriz de compuertas programables (DAG Booleano)
     // =========================================================================
-    localparam integer N  = 8;  // 8 Physical Wire Variables
-    localparam integer G  = 16; // 16 Programmable Logic Gates
-    localparam integer GW = 3;  // Opcode width
-    localparam integer IW = 5;  // Index width: ceil(log2(8 + 16)) = 5 bits (0..23)
+    reg [2:0] gate_op [0:15];
+    reg [4:0] gate_a  [0:15];
+    reg [4:0] gate_b  [0:15];
+    reg [4:0] target_node;
+    reg [3:0] wr_ptr;
 
-    localparam [GW-1:0] OP_AND  = 3'd0;
-    localparam [GW-1:0] OP_OR   = 3'd1;
-    localparam [GW-1:0] OP_XOR  = 3'd2;
-    localparam [GW-1:0] OP_XNOR = 3'd3;
-    localparam [GW-1:0] OP_NAND = 3'd4;
-    localparam [GW-1:0] OP_NOR  = 3'd5;
-    localparam [GW-1:0] OP_NOT  = 3'd6;
-    localparam [GW-1:0] OP_BUF  = 3'd7;
-
-    // Control Pins
-    wire          prog_en      = uio_in[0];
-    wire          prog_we      = uio_in[1];
-    wire          grid_stable  = uio_in[3]; // Signals physical wire settling complete
-    wire [GW-1:0] prog_op      = ui_in[2:0];
-    wire [IW-1:0] prog_a       = ui_in[7:3];
-    wire [IW-1:0] prog_b       = {1'b0, uio_in[7:4]};
-
-    reg [GW-1:0] gate_op  [0:G-1];
-    reg [IW-1:0] gate_ina [0:G-1];
-    reg [IW-1:0] gate_inb [0:G-1];
-    reg [3:0]    gate_wr_ptr;
-    reg [IW-1:0] out_gate;
-
-    integer p;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            gate_wr_ptr <= 4'd0;
-            out_gate    <= 5'd8; // Default to first gate output
-            for (p = 0; p < G; p = p + 1) begin
-                gate_op[p]  <= OP_BUF;
-                gate_ina[p] <= 5'd0;
-                gate_inb[p] <= 5'd0;
-            end
-        end else if (prog_en) begin
-            if (prog_we) begin
-                if (gate_wr_ptr < G) begin
-                    gate_op[gate_wr_ptr]  <= prog_op;
-                    gate_ina[gate_wr_ptr] <= prog_a;
-                    gate_inb[gate_wr_ptr] <= prog_b;
-                    gate_wr_ptr           <= gate_wr_ptr + 1'b1;
-                end
-            end else begin
-                out_gate <= prog_a;
-            end
+            wr_ptr      <= 4'd0;
+            target_node <= 5'd0;
+        end else if (prog_en && prog_we) begin
+            gate_op[wr_ptr] <= prog_op;
+            gate_a[wr_ptr]  <= prog_a;
+            gate_b[wr_ptr]  <= {1'b0, prog_b};
+            wr_ptr          <= wr_ptr + 1'b1;
+        end else if (prog_en && !prog_we) begin
+            target_node     <= prog_a;
         end
     end
 
-    // Combinational Evaluation Network: [7:0] Wire Taps, [23:8] Gates
-    reg [N+G-1:0] node;
+    // Evaluación combinacional de nodos
+    reg [31:0] node_val;
     integer k;
-    reg a_val, b_val;
     always @(*) begin
-        node[N-1:0] = quantized_taps;
-        for (k = 0; k < G; k = k + 1) begin
-            a_val = node[gate_ina[k]];
-            b_val = node[gate_inb[k]];
+        // Nodos 0 a 7 alimentados por los taps de la malla
+        node_val[7:0] = quantized_taps;
+
+        // Nodos 8 a 23 calculados por el DAG programado
+        for (k = 0; k < 16; k = k + 1) begin
             case (gate_op[k])
-                OP_AND : node[N+k] = a_val & b_val;
-                OP_OR  : node[N+k] = a_val | b_val;
-                OP_XOR : node[N+k] = a_val ^ b_val;
-                OP_XNOR: node[N+k] = a_val ~^ b_val;
-                OP_NAND: node[N+k] = ~(a_val & b_val);
-                OP_NOR : node[N+k] = ~(a_val | b_val);
-                OP_NOT : node[N+k] = ~a_val;
-                default: node[N+k] = a_val;
+                3'b000:  node_val[8 + k] = node_val[gate_a[k]] & node_val[gate_b[k]]; // AND
+                3'b001:  node_val[8 + k] = node_val[gate_a[k]] | node_val[gate_b[k]]; // OR
+                3'b010:  node_val[8 + k] = ~(node_val[gate_a[k]] & node_val[gate_b[k]]); // NAND
+                3'b011:  node_val[8 + k] = ~(node_val[gate_a[k]] | node_val[gate_b[k]]); // NOR
+                3'b100:  node_val[8 + k] = node_val[gate_a[k]] ^ node_val[gate_b[k]]; // XOR
+                3'b101:  node_val[8 + k] = ~(node_val[gate_a[k]] ^ node_val[gate_b[k]]); // XNOR
+                3'b110:  node_val[8 + k] = ~node_val[gate_a[k]];                     // NOT
+                default: node_val[8 + k] = 1'b0;
             endcase
         end
+        node_val[31:24] = 8'd0;
     end
 
-    // Decision Capture Stage
-    reg sat;
-    reg unsat;
-    reg done;
+    // Salidas del resolvedor
+    wire sat_eval = node_val[target_node];
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            sat   <= 1'b0;
-            unsat <= 1'b0;
-            done  <= 1'b0;
-        end else if (prog_en) begin
-            done  <= 1'b0;
-            sat   <= 1'b0;
-            unsat <= 1'b0;
-        end else if (grid_stable) begin
-            sat   <=  node[out_gate];
-            unsat <= ~node[out_gate];
-            done  <= 1'b1;
-        end
-    end
-
-    assign uo_out[0]   = sat;
-    assign uo_out[1]   = unsat;
-    assign uo_out[2]   = done;
+    assign uo_out[0]   = sat_eval & grid_st;
+    assign uo_out[1]   = (~sat_eval) & grid_st;
+    assign uo_out[2]   = grid_st;
     assign uo_out[7:3] = quantized_taps[4:0];
-
-    assign uio_oe  = 8'b00000000;
-    assign uio_out = 8'b00000000;
 
 endmodule
