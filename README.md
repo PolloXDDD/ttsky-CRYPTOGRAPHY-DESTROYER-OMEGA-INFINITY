@@ -1,4 +1,4 @@
-```markdown
+
 # OMEGA INFINITY KAORU - 3D BEOL Metal Grid Circuit-SAT Processor
 
 **Author:** Kaoru Aguilera Katayama  
@@ -108,4 +108,4 @@ gtkwave tb.fst tb.gtkw
 
 ```
 
-```
+
