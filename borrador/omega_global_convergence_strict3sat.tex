@@ -1,0 +1,166 @@
+\section{Worst-Case Convergence Analysis: Strict 3-SAT Barrier Family}
+
+The exact SAT encoding and OMEGA Boolean-cell representation do not by
+themselves imply polynomial-time global convergence.  For the current
+one-cell clause-feedback rule, a strict 3-SAT family gives an explicit
+superpolynomial lower bound.
+
+\subsection{Strict 3-CNF Gadgets}
+
+A two-literal clause $D=(a\lor b)$ is replaced by
+\begin{equation}
+G(D;z)
+=
+(a\lor b\lor z)
+\land
+(a\lor b\lor\neg z),
+\end{equation}
+where $z$ is a fresh variable.  If $D$ is true, both clauses are true; if
+$D$ is false, exactly one of the two clauses is false, independently of $z$.
+
+A unit clause $(x)$ is replaced by
+\begin{align}
+U(x;u,v)={}&
+(x\lor u\lor v)
+\land(x\lor u\lor\neg v)\\
+&\land(x\lor\neg u\lor v)
+\land(x\lor\neg u\lor\neg v).
+\end{align}
+If $x=1$, all four clauses are true.  If $x=0$, exactly one is false,
+independently of $u,v$.  All clauses in these gadgets contain three distinct
+variables.
+
+\subsection{Barrier Formula}
+
+Let
+\begin{equation}
+w_i=n-i,\qquad 1\le i\le n-1.
+\end{equation}
+Start from the weighted equality-chain formula
+\begin{equation}
+\widetilde F_n
+=
+(x_n)
+\land
+\bigwedge_{i=1}^{n-1}
+\left[
+(\neg x_i\lor x_{i+1})^{w_i}
+\land
+(x_i\lor\neg x_{i+1})^{w_i}
+\right].
+\end{equation}
+Replace every two-literal copy by its own fresh $G$ gadget and replace the
+unit clause by $U$.  Call the resulting strict 3-CNF $F_n$.
+
+The number of strict 3-clauses is
+\begin{equation}
+m
+=
+4\sum_{i=1}^{n-1}(n-i)+4
+=
+2n(n-1)+4
+=
+\Theta(n^2),
+\end{equation}
+and the number of auxiliary variables is also $\Theta(n^2)$.  The unique
+assignment of the original variables satisfying the chain is
+\begin{equation}
+x^\star=(1,\ldots,1).
+\end{equation}
+
+For
+\begin{equation}
+S_k=0^{\,n-k}1^k,
+\end{equation}
+the number of violated strict clauses is independent of all gadget auxiliary
+bits and equals
+\begin{equation}
+E(S_0)=1,\qquad
+E(S_k)=k\quad(1\le k\le n-1),\qquad
+E(S_n)=0.
+\end{equation}
+
+At an interior macro-state $S_k$, every violated clause belongs to a boundary
+gadget and contains three candidate variables: the zero-side boundary bit,
+the one-side boundary bit, and one gadget auxiliary bit.  A forward boundary
+flip maps $S_k$ to $S_{k+1}$ and raises the macro-energy by one.  A backward
+boundary flip maps $S_k$ to $S_{k-1}$ and lowers it by one for $k\ge2$.
+Flipping the gadget auxiliary bit leaves the macro-state and energy unchanged.
+
+Let $p\in(0,1)$ be the exploration probability.  For $k\ge2$,
+\begin{equation}
+P(S_k\to S_{k+1})=\frac{p}{3},
+\end{equation}
+whereas
+\begin{equation}
+P(S_k\to S_{k-1})=1-\frac{2p}{3}.
+\end{equation}
+At $S_1$, the backward move and the auxiliary move have equal greedy energy,
+so the backward-to-forward probability ratio is minimized there.  For every
+$1\le k\le n-2$,
+\begin{equation}
+\frac{P(\mathrm{backward})}{P(\mathrm{forward})}
+\ge
+R_0
+=
+\frac{3-p}{2p}
+>1.
+\end{equation}
+
+Let $K_t$ denote the suffix length, stopping when it first reaches either
+$0$ or $L=n-1$.  Since the backward/forward ratio is at least $R_0$,
+$R_0^{K_t}$ is a supermartingale.  Optional stopping gives
+\begin{equation}
+P_1(\tau_L<\tau_0)
+\le
+\frac{R_0-1}{R_0^L-1}.
+\end{equation}
+Therefore, beginning from the all-zero macro-state, the expected number of
+excursions required merely to reach $S_{n-1}$ obeys
+\begin{equation}
+\mathbb E[N_{\mathrm{exc}}]
+\ge
+\frac{R_0^{n-1}-1}{R_0-1}
+=
+\exp(\Omega(n)).
+\end{equation}
+
+For the implementation value $p=0.45$,
+\begin{equation}
+R_0
+=
+\frac{3-0.45}{2(0.45)}
+=
+2.833\ldots.
+\end{equation}
+
+If the original Boolean cells are initialized uniformly at random, the event
+$S_0=0^n$ has probability $2^{-n}$, regardless of the auxiliary-bit values.
+Consequently,
+\begin{equation}
+\mathbb E[T]
+\ge
+2^{-n}
+\frac{R_0^{n-1}-1}{R_0-1}
+=
+\Omega\!\left(
+\left(\frac{R_0}{2}\right)^n
+\right).
+\end{equation}
+For $p=0.45$,
+\begin{equation}
+\frac{R_0}{2}=1.4166\ldots>1.
+\end{equation}
+Thus the expected runtime is exponential in $n$ and superpolynomial in the
+strict 3-CNF input size $\Theta(n^2)$.
+
+\begin{theorem}
+The current OMEGA greedy/exploratory one-cell clause-feedback dynamics with
+$p=0.45$ does not have worst-case polynomial expected global-convergence time
+on arbitrary strict 3-SAT inputs.
+\end{theorem}
+
+The obstruction is the update rule, not the exact SAT energy: the exact
+QUBO/Ising compiler remains correct.  To obtain a valid worst-case
+polynomial-time theorem, OMEGA requires a different, genuinely nonlocal
+progress mechanism.

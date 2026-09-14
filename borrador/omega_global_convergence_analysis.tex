@@ -1,0 +1,190 @@
+\section{Worst-Case Convergence Analysis of the OMEGA Clause-Feedback Rule}
+
+This section analyzes the stochastic clause-feedback dynamics used by the
+current OMEGA Boolean-cell prototype.  Let $p\in(0,1)$ denote the exploration
+probability.  At each non-satisfying state the algorithm selects a violated
+clause; with probability $p$ it flips a uniformly selected variable of that
+clause, and otherwise it chooses a variable minimizing the one-flip energy
+change.
+
+\subsection{Almost-Sure Convergence on Satisfiable Instances}
+
+Fix any satisfiable 3-CNF formula $F$ and one satisfying assignment $x^\star$.
+At a non-satisfying state $x$, every violated clause contains at least one
+variable on which $x$ differs from $x^\star$.  During an exploration step, the
+probability of selecting such a variable is at least $1/3$.  Hence the
+conditional probability of decreasing the Hamming distance
+$d_H(x,x^\star)$ by one is at least
+\begin{equation}
+q=\frac{p}{3}.
+\end{equation}
+Consequently, from any state, the probability of reaching $x^\star$ during the
+next at most $n$ updates by a sequence of distance-decreasing exploration
+moves is at least
+\begin{equation}
+q^n=\left(\frac{p}{3}\right)^n.
+\end{equation}
+It follows that the probability of never reaching a satisfying assignment is
+zero.  A direct geometric-block estimate gives
+\begin{equation}
+\mathbb{E}[T]
+\le
+n\left(\frac{3}{p}\right)^n.
+\end{equation}
+Thus the current stochastic dynamics is globally convergent with probability
+one on satisfiable instances, but this general bound is exponential.
+
+\subsection{A Polynomial-Size Barrier Family}
+
+The stronger desired statement---worst-case polynomial-time global
+convergence---is false for the present update rule.  Consider the family
+\begin{equation}
+F_n
+=
+(x_n)
+\land
+\bigwedge_{i=1}^{n-1}
+\left[
+(\neg x_i\lor x_{i+1})^{w_i}
+\land
+(x_i\lor\neg x_{i+1})^{w_i}
+\right],
+\qquad
+w_i=n-i.
+\end{equation}
+Here the superscript denotes repeated copies of the clause.  Unit and
+two-literal clauses may be padded to three literals by repeating a literal,
+without changing their truth value or the implementation's candidate-variable
+set.  The number of clauses is
+\begin{equation}
+m
+=
+2\sum_{i=1}^{n-1}(n-i)+1
+=
+n(n-1)+1
+=
+\Theta(n^2).
+\end{equation}
+The formula has the unique satisfying assignment
+\begin{equation}
+x^\star=(1,1,\ldots,1).
+\end{equation}
+
+Define the suffix states
+\begin{equation}
+S_k
+=
+0^{\,n-k}1^k,
+\qquad
+0\le k\le n.
+\end{equation}
+For the exact violated-clause energy $E_F$,
+\begin{equation}
+E_F(S_0)=1,
+\qquad
+E_F(S_k)=k
+\quad(1\le k\le n-1),
+\qquad
+E_F(S_n)=0.
+\end{equation}
+
+At $S_k$, for $1\le k\le n-2$, the only violated clauses lie on the
+boundary between the zero prefix and the one suffix.  Flipping the boundary
+one back to zero moves to $S_{k-1}$; flipping the boundary zero forward to one
+moves to $S_{k+1}$.  The greedy branch therefore moves backward, because
+\begin{equation}
+E_F(S_{k-1}) < E_F(S_{k+1})
+\end{equation}
+(with the same conclusion at $k=1$, where the backward move has zero energy
+change while the forward move increases the energy).
+
+Let
+\begin{equation}
+a=\frac{p}{2},
+\qquad
+b=1-\frac{p}{2}.
+\end{equation}
+For $1\le k\le n-2$, the probability of advancing from $S_k$ to $S_{k+1}$
+is $a$, while the probability of retreating to $S_{k-1}$ is $b$.  Since
+$b>a$ for every $p<1$, the suffix length performs a biased random walk away
+from the satisfying state.
+
+Let
+\begin{equation}
+R=\frac{b}{a}
+=
+\frac{1-p/2}{p/2}>1.
+\end{equation}
+The gambler's-ruin probability that a walk beginning at $S_1$ reaches
+$S_{n-1}$ before returning to $S_0$ is
+\begin{equation}
+h_n
+=
+\frac{R-1}{R^{n-1}-1}.
+\end{equation}
+Every visit to $S_0$ is followed by a forced move to $S_1$, so the expected
+number of excursions required merely to reach $S_{n-1}$ is
+\begin{equation}
+\frac{1}{h_n}
+=
+\frac{R^{n-1}-1}{R-1}
+=
+\exp(\Omega(n)).
+\end{equation}
+This is already a lower bound on the expected time to reach the satisfying
+state.
+
+For the implementation value $p=0.45$,
+\begin{equation}
+R
+=
+\frac{0.775}{0.225}
+=
+3.444\ldots.
+\end{equation}
+Therefore the expected-excursion lower bound grows approximately as
+$3.444^n$.  Because the formula itself has only $\Theta(n^2)$ clauses, this is
+superpolynomial in the input size.
+
+If the initial Boolean-cell state is uniformly random, the event $S_0=0^n$
+has probability $2^{-n}$.  Hence even the unconditional expected runtime of
+the uncapped single-run process obeys the lower bound
+\begin{equation}
+\mathbb{E}[T]
+\ge
+2^{-n}
+\frac{R^{n-1}-1}{R-1}
+=
+\Omega\!\left(
+\left(\frac{R}{2}\right)^n
+\right).
+\end{equation}
+For $p=0.45$, $R/2=1.722\ldots>1$, so this lower bound is exponential in $n$.
+
+\begin{theorem}
+The present OMEGA clause-feedback rule with fixed exploration probability
+$p=0.45$ does not have worst-case polynomial expected global-convergence time
+over all formulas accepted by the implementation.
+\end{theorem}
+
+\begin{proof}
+The family $F_n$ above has polynomial description size
+$m=\Theta(n^2)$, but from $S_0$ the expected number of excursions required to
+cross the energy barrier is
+\[
+(R^{n-1}-1)/(R-1)=\exp(\Omega(n)).
+\]
+Under uniform random initialization, multiplication by the probability
+$2^{-n}$ of starting at $S_0$ still yields an exponential lower bound because
+$R/2>1$ for $p=0.45$.  Hence the expected runtime is not bounded by any
+polynomial in the input size.
+\end{proof}
+
+\subsection{Implication for the P=NP Program}
+
+The exact SAT energy, sparse QUBO compilation, and OMEGA Boolean-cell
+representation remain valid.  What fails is the specific local
+clause-feedback dynamics as a candidate proof of polynomial global
+optimization.  A successful replacement must introduce a genuinely nonlocal
+progress mechanism whose worst-case number of updates can be bounded by a
+polynomial; a local greedy/exploratory one-bit rule is insufficient.
